@@ -14,6 +14,8 @@ The hosted server only serves static HTML/JavaScript. **Model traffic goes direc
 - text/code file attachments up to 1 MB each
 - native function/tool calling
 - built-in calculator and current-time tools
+- `web_search` with SearXNG or Tavily
+- user-configurable HTTP / Streamable-HTTP MCP servers
 - sandboxed `run_javascript` tool with a hard timeout
 - optional Nerdamer symbolic math inside the JavaScript sandbox
 - chat history and settings stored in browser `localStorage`
@@ -28,12 +30,12 @@ Tiny hosted container
                  │
                  ▼
            User's browser
-                 │ direct request
-                 ▼
-      User's own machine / local LLM
+          /      |       \
+         /       |        \
+ local LLM    web search    MCP servers
 ```
 
-`127.0.0.1` is resolved by the **browser**, not the Docker host. That lets one hosted WebUI connect to an LLM running locally on each user's machine.
+`127.0.0.1` is resolved by the **browser**, not the Docker host. That lets one hosted WebUI connect to services running locally on each user's machine.
 
 ## Run with Docker Compose
 
@@ -69,7 +71,7 @@ docker run --rm \
   chatwebllm
 ```
 
-The runtime image is based on `busybox:1.37.0-musl` and contains only BusyBox plus the two static application files.
+The runtime image is based on `busybox:1.37.0-musl` and contains only BusyBox plus the static application files.
 
 ## Connect to a local model
 
@@ -89,7 +91,7 @@ For another local OpenAI-compatible server, choose **OpenAI-compatible**, enter 
 
 A remotely hosted HTTPS WebUI connecting to a local HTTP/private-network endpoint can be affected by CORS, mixed-content, and Private Network Access rules.
 
-The local LLM server must allow the WebUI origin. This project intentionally does not add a server-side bridge or proxy.
+The local LLM, search, and MCP servers must allow the WebUI origin. This project intentionally does not add a server-side bridge or proxy.
 
 ## Tools
 
@@ -102,6 +104,53 @@ Evaluates basic arithmetic locally in the browser.
 ### Current time
 
 Returns the browser's current local time and timezone.
+
+### Web search
+
+Enable **Web search** in Settings. The model receives a `web_search` tool with a query and optional result limit.
+
+Two providers are supported:
+
+- **SearXNG** — recommended for local/self-hosted search. Enter the JSON search endpoint, for example `http://127.0.0.1:8080/search`. ChatWebLLM adds `q`, `format=json`, and `categories=general`.
+- **Tavily** — enter a Tavily API key. Requests are made directly from the browser to Tavily.
+
+Search credentials are stored only in browser `localStorage`. If the selected search service does not allow browser CORS requests, it will not work from a remotely hosted WebUI.
+
+### MCP servers
+
+Enable **MCP tools** and add one or more browser-accessible HTTP / Streamable-HTTP MCP servers as JSON:
+
+```json
+[
+  {
+    "name": "Local MCP",
+    "url": "http://127.0.0.1:3001/mcp",
+    "enabled": true,
+    "headers": {}
+  }
+]
+```
+
+You can also provide request headers, for example:
+
+```json
+[
+  {
+    "name": "Private MCP",
+    "url": "https://mcp.example.com/mcp",
+    "enabled": true,
+    "headers": {
+      "Authorization": "Bearer your-token"
+    }
+  }
+]
+```
+
+Use **Discover MCP tools** to test the connection. ChatWebLLM performs MCP `initialize`, `tools/list`, and `tools/call` directly from the browser and exposes discovered tools to the local model.
+
+There is deliberately **no MCP bridge or companion process**. `stdio` MCP servers therefore cannot be launched by this WebUI; use an MCP server that exposes HTTP / Streamable-HTTP and allows the WebUI origin through CORS.
+
+MCP configuration and custom headers are stored in browser `localStorage`.
 
 ### JavaScript sandbox
 
