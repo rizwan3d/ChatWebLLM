@@ -1,7 +1,7 @@
 FROM busybox:1.37.0-musl
 
 WORKDIR /www
-COPY --chown=65534:65534 index.html app.js advanced-tools.js tool-extensions.js go-tools.js ./
+COPY --chown=65534:65534 index.html app.js advanced-tools.js tool-extensions.js go-tools.js ui-v2.js ./
 
 USER 65534:65534
 EXPOSE 8080
