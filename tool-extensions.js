@@ -106,3 +106,7 @@
   document.getElementById('saveSettings').onclick = saveForm;
   renderToolCount?.();
 })();
+
+const chatWebLLMGoTools = document.createElement('script');
+chatWebLLMGoTools.src = 'go-tools.js';
+document.body.appendChild(chatWebLLMGoTools);
