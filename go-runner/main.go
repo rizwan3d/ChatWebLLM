@@ -55,7 +55,7 @@ var allowImports = map[string]bool{
 	"bufio": true, "bytes": true, "cmp": true, "container/heap": true, "container/list": true, "container/ring": true,
 	"encoding/base64": true, "encoding/csv": true, "encoding/hex": true, "encoding/json": true, "errors": true,
 	"fmt": true, "hash": true, "hash/crc32": true, "hash/crc64": true, "hash/fnv": true,
-	"html": true, "iter": true, "maps": true, "math": true, "math/big": true, "math/bits": true, "math/cmplx": true, "math/rand": true,
+	"html": true, "maps": true, "math": true, "math/big": true, "math/bits": true, "math/cmplx": true, "math/rand": true,
 	"regexp": true, "regexp/syntax": true, "slices": true, "sort": true, "strconv": true, "strings": true, "sync": true, "sync/atomic": true,
 	"text/scanner": true, "text/tabwriter": true, "text/template": true, "time": true, "unicode": true, "unicode/utf8": true,
 }
@@ -132,7 +132,7 @@ func execute(req request) (response, error) {
 	if err := os.WriteFile(filepath.Join(tmp, "main.go"), []byte(req.Code), 0600); err != nil {
 		return response{ExitCode: -1}, err
 	}
-	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module sandbox\n\ngo 1.23\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module sandbox\n\ngo 1.22\n"), 0600); err != nil {
 		return response{ExitCode: -1}, err
 	}
 
