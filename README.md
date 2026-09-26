@@ -21,6 +21,7 @@ The hosted server only serves static HTML/JavaScript. **Model traffic goes direc
 - user-configurable HTTP / Streamable-HTTP MCP servers
 - sandboxed `run_javascript` tool with a hard timeout
 - optional Nerdamer symbolic math inside the JavaScript sandbox
+- optional local `run_go` and `run_go_visible` tools
 - chat history and settings stored in browser `localStorage`
 - dark, light, and system themes
 - no server-side user data
@@ -36,9 +37,9 @@ Tiny hosted container
           /      |       \
          /       |        \
  local LLM    web tools     MCP servers
-                  |
-              IndexedDB
-              file library
+    |             |
+ Go runner     IndexedDB
+ (optional)    file library
 ```
 
 `127.0.0.1` is resolved by the **browser**, not the Docker host. That lets one hosted WebUI connect to services running locally on each user's machine.
@@ -97,7 +98,7 @@ For another local OpenAI-compatible server, choose **OpenAI-compatible**, enter 
 
 A remotely hosted HTTPS WebUI connecting to a local HTTP/private-network endpoint can be affected by CORS, mixed-content, and Private Network Access rules.
 
-The local LLM, search, MCP, restaurant-availability, webpage, and PDF endpoints must allow the WebUI origin when the browser accesses them directly. This project intentionally does not add a server-side bridge or proxy.
+The local LLM, search, MCP, Go runner, restaurant-availability, webpage, and PDF endpoints must allow the WebUI origin when the browser accesses them directly. This project intentionally does not add a server-side bridge or proxy.
 
 ## Tools
 
@@ -195,21 +196,6 @@ Enable **MCP tools** and add one or more browser-accessible HTTP / Streamable-HT
 ]
 ```
 
-You can also provide request headers, for example:
-
-```json
-[
-  {
-    "name": "Private MCP",
-    "url": "https://mcp.example.com/mcp",
-    "enabled": true,
-    "headers": {
-      "Authorization": "Bearer your-token"
-    }
-  }
-]
-```
-
 Use **Discover MCP tools** to test the connection. ChatWebLLM performs MCP `initialize`, `tools/list`, and `tools/call` directly from the browser and exposes discovered tools to the local model.
 
 There is deliberately **no MCP bridge or companion process**. `stdio` MCP servers therefore cannot be launched by this WebUI; use an MCP server that exposes HTTP / Streamable-HTTP and allows the WebUI origin through CORS.
@@ -224,13 +210,72 @@ Only the structured result/error is returned to the model.
 
 ### Symbolic math with Nerdamer
 
-Enable **JavaScript sandbox** and then **Symbolic math (Nerdamer)**. The sandbox loads Nerdamer so the model can perform symbolic operations such as:
+Enable **JavaScript sandbox** and then **Symbolic math (Nerdamer)**. The sandbox loads Nerdamer so the model can simplify, differentiate, integrate, solve equations, and perform other algebra/calculus operations.
 
-- simplify
-- differentiate
-- integrate
-- solve equations
-- algebra and calculus operations
+### Private Go
+
+Enable **Private Go** in Settings to expose `run_go` to the model. The WebUI sends the complete Go program directly to a Go runner on the user's machine. The result is returned to the model as a tool result and is not rendered as a user-visible artifact.
+
+Start the included runner on the same machine as the browser:
+
+```bash
+cd go-runner
+go run .
+```
+
+It listens on loopback by default:
+
+```text
+http://127.0.0.1:8787/run
+```
+
+The runner is deliberately conservative:
+
+- loopback-only binding by default
+- one execution at a time
+- hard execution timeout
+- request and output size limits
+- `GOMAXPROCS=1`
+- `GOMEMLIMIT=128MiB`
+- external Go module downloads disabled
+- CGO disabled
+- standard-library import allowlist that excludes filesystem, process, network, syscall, plugin, and unsafe packages
+
+This reduces risk but is **not a full OS/container sandbox**. Keep it bound to loopback and do not expose the runner to an untrusted network.
+
+### Visible Go
+
+Enable **Visible Go** to expose `run_go_visible`. It uses the same local runner but can render structured results as tables, charts, and downloadable files.
+
+A Go program can print normal stdout and then emit one final protocol line:
+
+```go
+fmt.Println(`CHATWEBLLM_VISIBLE:{"outputs":[{"type":"table","title":"Scores","columns":["Name","Score"],"rows":[["A",12],["B",18]]}]}`)
+```
+
+Supported output objects:
+
+- `table` — `title`, `columns`, and `rows`
+- `chart` — `title`, `xKey`, `series`, and `data`
+- `file` — `name`, optional `mime`, and either text `content` or `base64`
+
+Example chart payload:
+
+```json
+{
+  "outputs": [
+    {
+      "type": "chart",
+      "title": "Requests",
+      "xKey": "day",
+      "series": [{"dataKey": "count", "label": "Count"}],
+      "data": [{"day": "Mon", "count": 12}, {"day": "Tue", "count": 19}]
+    }
+  ]
+}
+```
+
+The tiny ChatWebLLM Docker image does **not** include the Go compiler or runner. This keeps server RAM/image size low; Go execution remains an optional local capability on the user's machine.
 
 ## Files and persistence
 
