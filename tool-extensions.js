@@ -109,4 +109,9 @@
 
 const chatWebLLMGoTools = document.createElement('script');
 chatWebLLMGoTools.src = 'go-tools.js';
+chatWebLLMGoTools.onload = () => {
+  const ui = document.createElement('script');
+  ui.src = 'ui-v2.js';
+  document.body.appendChild(ui);
+};
 document.body.appendChild(chatWebLLMGoTools);
