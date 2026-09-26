@@ -59,8 +59,8 @@
     return list;
   };
 
-  const prevExecute = executeTool;
-  executeTool = async function (name, args = {}) {
+  const prevExecute = execute;
+  execute = async function (name, args = {}) {
     if (name === 'web_restaurant_availability') return restaurantAvailability(args);
     if (name === 'files_inspect') {
       const f = await getFile(args.id);
