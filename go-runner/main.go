@@ -5,10 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go/ast"
 	"go/parser"
 	"go/token"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -16,7 +14,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -90,7 +87,7 @@ func main() {
 func runHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"POST required"}`, http.StatusMethodNotAllowed)
+		writeErr(w, http.StatusMethodNotAllowed, "POST required")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 512<<10)
@@ -193,8 +190,7 @@ func validateCode(code string) error {
 			return fmt.Errorf("dot and blank imports are not allowed")
 		}
 	}
-	blockedDirectives := []string{"//go:linkname", "//go:cgo_", "//go:generate"}
-	for _, marker := range blockedDirectives {
+	for _, marker := range []string{"//go:linkname", "//go:cgo_", "//go:generate"} {
 		if strings.Contains(code, marker) {
 			return fmt.Errorf("compiler directive %q is not allowed", marker)
 		}
@@ -234,7 +230,6 @@ func getenv(k, fallback string) string {
 	return fallback
 }
 
-// Avoid importing reflect just for errors.As; this covers exec.ExitError here.
 func errorAs(err error, target **exec.ExitError) bool {
 	for err != nil {
 		if v, ok := err.(*exec.ExitError); ok {
@@ -248,7 +243,3 @@ func errorAs(err error, target **exec.ExitError) bool {
 	}
 	return false
 }
-
-var _ = ast.File{}
-var _ io.Reader
-var _ sync.Mutex
