@@ -107,9 +107,12 @@
   renderToolCount?.();
 })();
 
+// Older optional modules wrapped `executeTool`; keep them working with the current core dispatcher.
+executeTool = execute;
 const chatWebLLMGoTools = document.createElement('script');
 chatWebLLMGoTools.src = 'go-tools.js';
 chatWebLLMGoTools.onload = () => {
+  if (typeof executeTool === 'function') execute = executeTool;
   const ui = document.createElement('script');
   ui.src = 'ui-v2.js';
   document.body.appendChild(ui);
