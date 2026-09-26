@@ -15,6 +15,9 @@ The hosted server only serves static HTML/JavaScript. **Model traffic goes direc
 - native function/tool calling
 - built-in calculator and current-time tools
 - `web_search` with SearXNG or Tavily
+- Web tools for opening pages, image/product/business search, PDFs, and optional restaurant availability
+- GenUI cards for weather, currency, time, calculator, tables, and key/value data
+- IndexedDB-backed local Files library with search/read/inspect/materialize/save/move/delete tools
 - user-configurable HTTP / Streamable-HTTP MCP servers
 - sandboxed `run_javascript` tool with a hard timeout
 - optional Nerdamer symbolic math inside the JavaScript sandbox
@@ -26,13 +29,16 @@ The hosted server only serves static HTML/JavaScript. **Model traffic goes direc
 
 ```text
 Tiny hosted container
-  └─ BusyBox httpd serves index.html + app.js
+  └─ BusyBox httpd serves static application files
                  │
                  ▼
            User's browser
           /      |       \
          /       |        \
- local LLM    web search    MCP servers
+ local LLM    web tools     MCP servers
+                  |
+              IndexedDB
+              file library
 ```
 
 `127.0.0.1` is resolved by the **browser**, not the Docker host. That lets one hosted WebUI connect to services running locally on each user's machine.
@@ -91,7 +97,7 @@ For another local OpenAI-compatible server, choose **OpenAI-compatible**, enter 
 
 A remotely hosted HTTPS WebUI connecting to a local HTTP/private-network endpoint can be affected by CORS, mixed-content, and Private Network Access rules.
 
-The local LLM, search, and MCP servers must allow the WebUI origin. This project intentionally does not add a server-side bridge or proxy.
+The local LLM, search, MCP, restaurant-availability, webpage, and PDF endpoints must allow the WebUI origin when the browser accesses them directly. This project intentionally does not add a server-side bridge or proxy.
 
 ## Tools
 
@@ -111,10 +117,68 @@ Enable **Web search** in Settings. The model receives a `web_search` tool with a
 
 Two providers are supported:
 
-- **SearXNG** — recommended for local/self-hosted search. Enter the JSON search endpoint, for example `http://127.0.0.1:8080/search`. ChatWebLLM adds `q`, `format=json`, and `categories=general`.
+- **SearXNG** — recommended for local/self-hosted search. Enter the JSON search endpoint, for example `http://127.0.0.1:8080/search`.
 - **Tavily** — enter a Tavily API key. Requests are made directly from the browser to Tavily.
 
 Search credentials are stored only in browser `localStorage`. If the selected search service does not allow browser CORS requests, it will not work from a remotely hosted WebUI.
+
+### Web suite
+
+Enable **Web suite** under **Advanced tools** to expose additional model-callable browser tools:
+
+- `web_open` — fetch a webpage and extract readable text
+- `web_image_search` — image search through the configured search provider
+- `web_product_search` — product-oriented web search
+- `web_business_search` — local-business-oriented web search
+- `web_pdf_inspect` — extract PDF text with PDF.js, up to the configured page limit
+- `web_restaurant_availability` — call a user-configured HTTP JSON availability endpoint
+
+Product and business results are search results rather than a purchasing or maps database. Restaurant availability is only considered live when a real availability endpoint is configured; ChatWebLLM does not fabricate slots from generic search results.
+
+For restaurant availability, set the optional endpoint in **Settings → Advanced tools**. ChatWebLLM sends JSON like:
+
+```json
+{
+  "restaurant": "Example Restaurant",
+  "location": "Example City",
+  "party_size": 2,
+  "start_date_time": "2026-10-01T19:00:00"
+}
+```
+
+The endpoint must return JSON (or text) and allow browser CORS.
+
+### GenUI
+
+Enable **GenUI** under **Advanced tools**. The model can call `show_widget` and request one of these UI types:
+
+- `weather` — current + short forecast using Open-Meteo
+- `currency` — conversion using Frankfurter
+- `time` — local browser time/timezone card
+- `calculator` — calculation result card
+- `table` — structured rows/columns
+- `key_value` — general structured data card
+
+Widget results are rendered directly in the chat UI. They are local ChatWebLLM widgets, not the proprietary ChatGPT GenUI runtime.
+
+### Files library
+
+Enable **Files library** under **Advanced tools**. Imported files are stored locally in browser IndexedDB and are not uploaded to the ChatWebLLM server.
+
+The model can use:
+
+- `files_list`
+- `files_search`
+- `files_read`
+- `files_inspect`
+- `files_materialize`
+- `files_save`
+- `files_move`
+- `files_delete`
+
+`files_materialize` places the complete stored text into the tool result for the current model context. Folder organization is logical metadata inside IndexedDB.
+
+The settings panel also includes a small local-library browser/import control. Clearing site storage removes this local library.
 
 ### MCP servers
 
@@ -170,9 +234,9 @@ Enable **JavaScript sandbox** and then **Symbolic math (Nerdamer)**. The sandbox
 
 ## Files and persistence
 
-Attachments are read in the browser and appended to the user's model context. They are not uploaded to the WebUI server.
+One-off chat attachments are read in the browser and appended to the user's model context. They are not uploaded to the WebUI server.
 
-Settings and conversations are stored in browser `localStorage`. Clearing browser storage removes them.
+The reusable Files library uses browser IndexedDB. Settings and conversations use browser `localStorage`. Clearing browser/site storage removes them.
 
 ## Static hosting without Docker
 
